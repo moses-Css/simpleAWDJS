@@ -57,6 +57,9 @@ function detectDevice(uaString = "") {
 }
 
 app.get("/", (req, res) => {
+  // Initialize device variable immediately to prevent undefined errors
+  let device = "desktop"; // Default fallback
+
   try {
     // 1) get UA + optional cookie override with proper validation
     const ua = req.get("User-Agent") || "";
@@ -64,11 +67,12 @@ app.get("/", (req, res) => {
     const USE_COOKIE_OVERRIDE = true; // set false if you always trust UA
 
     // 2) determine device with error handling and fallback
-    let device;
     try {
-      device = detectDevice(ua);
+      const detectedDevice = detectDevice(ua);
       // Validate device value
-      if (!["mobile", "tablet", "desktop"].includes(device)) {
+      if (detectedDevice && ["mobile", "tablet", "desktop"].includes(detectedDevice)) {
+        device = detectedDevice;
+      } else {
         device = "desktop"; // fallback to desktop if detection fails
       }
     } catch (error) {
@@ -77,12 +81,12 @@ app.get("/", (req, res) => {
     }
 
     // 3) apply cookie override if valid
-    if (USE_COOKIE_OVERRIDE && ["mobile","tablet","desktop"].includes(cookieDev)) {
+    if (USE_COOKIE_OVERRIDE && cookieDev && ["mobile","tablet","desktop"].includes(cookieDev)) {
       device = cookieDev;
     }
 
-    // 4) ensure device is always defined before template rendering
-    if (!device) {
+    // 4) final safety check - ensure device is always defined
+    if (!device || typeof device !== "string") {
       device = "desktop";
     }
 
@@ -141,6 +145,15 @@ app.get("/", (req, res) => {
       theme: { bodyBg: "from-red-50 to-red-100", accentClass: "text-red-600", accentDot: "bg-red-600", avatarGradient: "from-red-600 to-red-300" }
     });
   }
+});
+
+// Health check endpoint for debugging
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development"
+  });
 });
 
 // clear cookie: redirect to / so root handles render (safer)
