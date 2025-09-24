@@ -24,6 +24,12 @@
 - Configured routing for serverless environment
 - Set production environment variables and function limits
 
+### 5. **Disabled cookie override for easier testing**
+- Set `USE_COOKIE_OVERRIDE = false` in server.js
+- Disabled automatic cookie setting in public/device-override.js
+- Device detection now relies only on User-Agent header
+- No need to clear browser data when testing different devices
+
 ## 🔄 Next Steps
 
 ### 1. **Test the fix locally**
