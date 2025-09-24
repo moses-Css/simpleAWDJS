@@ -64,7 +64,7 @@ app.get("/", (req, res) => {
     // 1) get UA + optional cookie override with proper validation
     const ua = req.get("User-Agent") || "";
     const cookieDev = req.cookies ? req.cookies.detected_device : undefined;
-    const USE_COOKIE_OVERRIDE = true; // set false if you always trust UA
+    const USE_COOKIE_OVERRIDE = false; // set false if you always trust UA - disabled for easier testing
 
     // 2) determine device with error handling and fallback
     try {

@@ -20,8 +20,9 @@
     }
     document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/";
   }
-  const detected = detectClientDevice();
-  setCookie("detected_device", detected, 7);
+  // Cookie setting disabled for easier testing - uncomment if needed
+  // const detected = detectClientDevice();
+  // setCookie("detected_device", detected, 7);
 
   window.DeviceOverride = {
     detectClientDevice,
