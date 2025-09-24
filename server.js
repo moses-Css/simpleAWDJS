@@ -66,6 +66,7 @@
     const ua = req.get("User-Agent") || "";
     const uaLower = ua.toLowerCase();
     const qSource = (req.query.source || "").toLowerCase(); // ?source=flutterflow
+    const headerSource = (req.get("x-source") || "").toLowerCase();
 
     // 2) Detect if request likely comes from a WebView (heuristic)
     const isLikelyWebView = /webview|wv|crosswalk|cordova|reactnative|flutter|flutterflow|flutter_webview/i.test(uaLower);
@@ -87,13 +88,13 @@
     }
 
     // 6) Default theme by device (full Tailwind class fragments)
-    if (device === "desktop") theme = { bodyBg: "from-blue-50 to-blue-100", accentClass: "text-blue-600", accentDot: "bg-blue-600", avatarGradient: "from-blue-600 to-blue-300" };
+    if (device === "desktop") theme = { bodyBg: "from-gray-50 to-gray-100", accentClass: "text-gray-600", accentDot: "bg-gray-600", avatarGradient: "from-gray-600 to-gray-300" };
     else if (device === "tablet") theme = { bodyBg: "from-pink-50 to-pink-100", accentClass: "text-pink-600", accentDot: "bg-pink-600", avatarGradient: "from-pink-600 to-pink-300" };
     else theme = { bodyBg: "from-emerald-50 to-emerald-100", accentClass: "text-emerald-600", accentDot: "bg-emerald-600", avatarGradient: "from-emerald-600 to-emerald-300" };
 
     // 7) OVERRIDE: if request likely from FlutterFlow WebView, force purple theme
     if (isFromFlutterFlow) {
-      theme = { bodyBg: "from-purple-200 to-purple-400", accentClass: "text-purple-700", accentDot: "bg-purple-600", avatarGradient: "from-purple-700 to-purple-400" };
+      theme = { bodyBg: "from-sky-200 to-sky-400", accentClass: "text-sky-700", accentDot: "bg-sky-600", avatarGradient: "from-sky-700 to-sky-400" };
       console.log("[FLUTTERFLOW DETECTED] Using FlutterFlow-purple theme. ua:", ua.substring(0, 120));
     }
 console.log("[TEMPLATE DATA] device:", device);
