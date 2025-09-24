@@ -41,12 +41,12 @@ app.get("/", (req, res) => {
 
 
   //Cookie override (Matikan kalau misal server trust user agent bukan cookie pertama) kalau gunakan logic dibawah lebih strict
-  // let device;
-  // if (["mobile", "tablet", "desktop"].includes(cookieDev)) {
-  //   device = cookieDev;
-  // } else {
-  //   device = detectDevice(ua);
-  // }
+  let device;
+  if (["mobile", "tablet", "desktop"].includes(cookieDev)) {
+    device = cookieDev;
+  } else {
+    device = detectDevice(ua);
+  }
 
   // per-device content
   let pageInfo;
