@@ -12,84 +12,135 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(cookieParser());
 
 function detectDevice(uaString = "") {
-  const ua = (uaString || "").toLowerCase();
+  try {
+    // Handle null, undefined, or non-string inputs
+    if (!uaString || typeof uaString !== "string") {
+      return "desktop";
+    }
 
-  const tabletKeys = [
-    "tablet","ipad","playbook","silk","kindle",
-    "nexus 7","nexus 9","sm-t","tab","galaxy tab",
-    "xoom","transformer","sch-i800"
-  ];
+    const ua = uaString.toLowerCase();
 
-  const mobileKeys = [
-    /mobile/, /iphone/, /ipod/, /windows phone/, /blackberry/,
-    /bb10/, /opera mini/, /phone/, /android.*mobile/
-  ];
+    const tabletKeys = [
+      "tablet","ipad","playbook","silk","kindle",
+      "nexus 7","nexus 9","sm-t","tab","galaxy tab",
+      "xoom","transformer","sch-i800"
+    ];
 
-  for (const k of tabletKeys) {
-    if (ua.includes(k)) return "tablet";
+    const mobileKeys = [
+      /mobile/, /iphone/, /ipod/, /windows phone/, /blackberry/,
+      /bb10/, /opera mini/, /phone/, /android.*mobile/
+    ];
+
+    // Check for tablet first
+    for (const k of tabletKeys) {
+      if (ua.includes(k)) return "tablet";
+    }
+
+    // Check for mobile
+    for (const k of mobileKeys) {
+      try {
+        if (k.test ? k.test(ua) : ua.includes(k)) return "mobile";
+      } catch (regexError) {
+        // If regex fails, try string match
+        if (typeof k === "string" && ua.includes(k)) return "mobile";
+      }
+    }
+
+    // Special case: Android without mobile flag is tablet
+    if (ua.includes("android") && !/mobile/.test(ua)) return "tablet";
+
+    return "desktop";
+  } catch (error) {
+    console.error("[ERROR] detectDevice function failed:", error);
+    return "desktop"; // Always return a valid device type
   }
-
-  for (const k of mobileKeys) {
-    if (k.test ? k.test(ua) : ua.includes(k)) return "mobile";
-  }
-
-  if (ua.includes("android") && !/mobile/.test(ua)) return "tablet";
-
-  return "desktop";
 }
 
 app.get("/", (req, res) => {
-  // 1) get UA + optional cookie override
-  const ua = req.get("User-Agent") || "";
-  const cookieDev = req.cookies ? req.cookies.detected_device : undefined;
-  const USE_COOKIE_OVERRIDE = true; // set false if you always trust UA
+  try {
+    // 1) get UA + optional cookie override with proper validation
+    const ua = req.get("User-Agent") || "";
+    const cookieDev = req.cookies ? req.cookies.detected_device : undefined;
+    const USE_COOKIE_OVERRIDE = true; // set false if you always trust UA
 
-  // 2) determine device (always set before using)
-  let device = detectDevice(ua);
-  if (USE_COOKIE_OVERRIDE && ["mobile","tablet","desktop"].includes(cookieDev)) {
-    device = cookieDev;
+    // 2) determine device with error handling and fallback
+    let device;
+    try {
+      device = detectDevice(ua);
+      // Validate device value
+      if (!["mobile", "tablet", "desktop"].includes(device)) {
+        device = "desktop"; // fallback to desktop if detection fails
+      }
+    } catch (error) {
+      console.error("[ERROR] Device detection failed:", error);
+      device = "desktop"; // fallback to desktop on error
+    }
+
+    // 3) apply cookie override if valid
+    if (USE_COOKIE_OVERRIDE && ["mobile","tablet","desktop"].includes(cookieDev)) {
+      device = cookieDev;
+    }
+
+    // 4) ensure device is always defined before template rendering
+    if (!device) {
+      device = "desktop";
+    }
+
+    // 5) page content per device
+    let pageInfo;
+    if (device === "desktop") {
+      pageInfo = {
+        title: "AdaptiveSite — Ecommerce",
+        headline: "Sell anything. Fast.",
+        sub: "A modern ecommerce demo layout for desktop shoppers.",
+        bullets: ["Product grid", "Checkout flow", "Admin dashboard"]
+      };
+    } else if (device === "tablet") {
+      pageInfo = {
+        title: "AdaptiveSite — Studio",
+        headline: "Create. Showcase. Inspire.",
+        sub: "A clean studio portfolio layout tuned for tablets.",
+        bullets: ["Gallery", "Services", "Contact form"]
+      };
+    } else {
+      pageInfo = {
+        title: "AdaptiveSite — Chatan App",
+        headline: "Chat with your people.",
+        sub: "Compact chat UI and quick actions, optimized for phones.",
+        bullets: ["Recent chats", "Quick replies", "Notifications"]
+      };
+    }
+
+    // 6) theme per-device (send full Tailwind utility fragments)
+    let theme;
+    if (device === "desktop") {
+      theme = { bodyBg: "from-blue-50 to-blue-100", accentClass: "text-blue-600", accentDot: "bg-blue-600", avatarGradient: "from-blue-600 to-blue-300" };
+    } else if (device === "tablet") {
+      theme = { bodyBg: "from-pink-50 to-pink-100", accentClass: "text-pink-600", accentDot: "bg-pink-600", avatarGradient: "from-pink-600 to-pink-300" };
+    } else {
+      theme = { bodyBg: "from-emerald-50 to-emerald-100", accentClass: "text-emerald-600", accentDot: "bg-emerald-600", avatarGradient: "from-emerald-600 to-emerald-300" };
+    }
+
+    // 7) debug log (optional) - remove if noisy
+    console.log("[render] device=", device, "ua=", ua.substring(0, 100));
+
+    // 8) single render call
+    return res.render("index", { device, ua, page: pageInfo, theme });
+  } catch (error) {
+    console.error("[ERROR] Route handler failed:", error);
+    // Fallback response in case of any error
+    return res.status(500).render("index", {
+      device: "desktop",
+      ua: "",
+      page: {
+        title: "AdaptiveSite — Error",
+        headline: "Something went wrong",
+        sub: "Please try again later",
+        bullets: ["Error occurred", "Using fallback", "Check logs"]
+      },
+      theme: { bodyBg: "from-red-50 to-red-100", accentClass: "text-red-600", accentDot: "bg-red-600", avatarGradient: "from-red-600 to-red-300" }
+    });
   }
-
-  // 3) page content per device
-  let pageInfo;
-  if (device === "desktop") {
-    pageInfo = {
-      title: "AdaptiveSite — Ecommerce",
-      headline: "Sell anything. Fast.",
-      sub: "A modern ecommerce demo layout for desktop shoppers.",
-      bullets: ["Product grid", "Checkout flow", "Admin dashboard"]
-    };
-  } else if (device === "tablet") {
-    pageInfo = {
-      title: "AdaptiveSite — Studio",
-      headline: "Create. Showcase. Inspire.",
-      sub: "A clean studio portfolio layout tuned for tablets.",
-      bullets: ["Gallery", "Services", "Contact form"]
-    };
-  } else {
-    pageInfo = {
-      title: "AdaptiveSite — Chatan App",
-      headline: "Chat with your people.",
-      sub: "Compact chat UI and quick actions, optimized for phones.",
-      bullets: ["Recent chats", "Quick replies", "Notifications"]
-    };
-  }
-
-  // 4) theme per-device (send full Tailwind utility fragments)
-  let theme;
-  if (device === "desktop") {
-    theme = { bodyBg: "from-blue-50 to-blue-100", accentClass: "text-blue-600", accentDot: "bg-blue-600", avatarGradient: "from-blue-600 to-blue-300" };
-  } else if (device === "tablet") {
-    theme = { bodyBg: "from-pink-50 to-pink-100", accentClass: "text-pink-600", accentDot: "bg-pink-600", avatarGradient: "from-pink-600 to-pink-300" };
-  } else {
-    theme = { bodyBg: "from-emerald-50 to-emerald-100", accentClass: "text-emerald-600", accentDot: "bg-emerald-600", avatarGradient: "from-emerald-600 to-emerald-300" };
-  }
-
-  // 5) debug log (optional) - remove if noisy
-  console.log("[render] device=", device);
-
-  // 6) single render call
-  return res.render("index", { device, ua, page: pageInfo, theme });
 });
 
 // clear cookie: redirect to / so root handles render (safer)
