@@ -57,8 +57,8 @@ function detectDevice(uaString = "") {
 }
 
 app.get("/", (req, res) => {
-  // Initialize device variable immediately to prevent undefined errors
-  let device = "desktop"; // Default fallback
+  // CRITICAL: Initialize device variable immediately to prevent undefined errors
+  let device = "desktop"; // Default fallback - MUST be defined before any logic
 
   try {
     // 1) get UA + optional cookie override with proper validation
@@ -85,7 +85,7 @@ app.get("/", (req, res) => {
       device = cookieDev;
     }
 
-    // 4) final safety check - ensure device is always defined
+    // 4) CRITICAL SAFETY CHECK - ensure device is always defined
     if (!device || typeof device !== "string") {
       device = "desktop";
     }
@@ -128,8 +128,16 @@ app.get("/", (req, res) => {
     // 7) debug log (optional) - remove if noisy
     console.log("[render] device=", device, "ua=", ua.substring(0, 100));
 
-    // 8) single render call
-    return res.render("index", { device, ua, page: pageInfo, theme });
+    // 8) CRITICAL: Ensure all template variables are defined before rendering
+    const templateData = {
+      device: device || "desktop", // Double-check device
+      ua: ua || "",
+      page: pageInfo,
+      theme: theme
+    };
+
+    // 9) single render call with guaranteed data
+    return res.render("index", templateData);
   } catch (error) {
     console.error("[ERROR] Route handler failed:", error);
     // Fallback response in case of any error

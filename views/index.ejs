@@ -41,7 +41,7 @@
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-semibold shadow-sm">AS</div>
               <div class="text-sm text-gray-500">Adaptive demo</div>
-              <div class="ml-auto device-pill text-xs bg-white/60 px-3 py-1 rounded-full border text-gray-700"><strong class="ml-1"><%= device %></strong></div>
+              <div class="ml-auto device-pill text-xs bg-white/60 px-3 py-1 rounded-full border text-gray-700"><strong class="ml-1"><%= device || 'desktop' %></strong></div>
             </div>
 
             <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-tight tracking-tight">
@@ -69,7 +69,7 @@
             <div class="w-full max-w-md rounded-2xl p-6 bg-gradient-to-b from-white/90 to-gray-50 border border-gray-100 shadow-lg">
               <div class="h-56 rounded-md flex items-center">
                 <!-- subtle mockup: three device bars -->
-                 <h1 class="text-xl text-gray-900 uppercase font-bold"><%= device %></h1>
+                 <h1 class="text-xl text-gray-900 uppercase font-bold"><%= device || 'desktop' %></h1>
               </div>
 
               <div class="mt-4 text-xs text-gray-500 text-center">
