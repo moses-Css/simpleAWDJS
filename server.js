@@ -57,8 +57,6 @@
   }
 
   app.get("/", (req, res) => {
-    res.clearCookie("detected_device", { path: "/" });
-
     // CRITICAL: Initialize device variable immediately to prevent undefined errors
     let device = "desktop"; // Default fallback - MUST be defined before any logic
 
@@ -66,7 +64,7 @@
       // 1) get UA + optional cookie override with proper validation
       const ua = req.get("User-Agent") || "";
       const cookieDev = req.cookies ? req.cookies.detected_device : undefined;
-      const USE_COOKIE_OVERRIDE = false; // set false if you always trust UA - disabled for easier testing
+      const USE_COOKIE_OVERRIDE = true; // set false if you always trust UA - enabled for dynamic updates
 
       // 2) determine device with error handling and fallback
       try {
@@ -82,10 +80,17 @@
         device = "desktop"; // fallback to desktop on error
       }
 
-      // 3) apply cookie override if valid
-      if (USE_COOKIE_OVERRIDE && cookieDev && ["mobile","tablet","desktop"].includes(cookieDev)) {
-        device = cookieDev;
-      }
+    // 3) apply cookie override if valid (always update cookie with current detection)
+    if (USE_COOKIE_OVERRIDE && cookieDev && ["mobile","tablet","desktop"].includes(cookieDev)) {
+      device = cookieDev;
+    }
+
+    // Always update cookie with current device detection for consistency
+    res.cookie("detected_device", device, {
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      httpOnly: false, // Allow client-side access for testing
+      path: "/"
+    });
 
       // 4) CRITICAL SAFETY CHECK - ensure device is always defined
       if (!device || typeof device !== "string") {
