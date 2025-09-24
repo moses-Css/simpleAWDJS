@@ -1,18 +1,23 @@
+// server.js (fixed)
 const express = require("express");
 const cookieParser = require("cookie-parser");
+const path = require("path");
+
 const app = express();
 
+// make views/static path explicit (helps in some deploy envs)
+app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
 app.use(cookieParser());
 
 function detectDevice(uaString = "") {
-  const ua = uaString.toLowerCase();
+  const ua = (uaString || "").toLowerCase();
 
   const tabletKeys = [
-    "tablet", "ipad", "playbook", "silk", "kindle",
-    "nexus 7", "nexus 9", "sm-t", "tab", "galaxy tab",
-    "xoom", "transformer", "sch-i800"
+    "tablet","ipad","playbook","silk","kindle",
+    "nexus 7","nexus 9","sm-t","tab","galaxy tab",
+    "xoom","transformer","sch-i800"
   ];
 
   const mobileKeys = [
@@ -28,27 +33,24 @@ function detectDevice(uaString = "") {
     if (k.test ? k.test(ua) : ua.includes(k)) return "mobile";
   }
 
-  // special-case: android present but not mobile -> tablet
   if (ua.includes("android") && !/mobile/.test(ua)) return "tablet";
 
-  // fallback
   return "desktop";
 }
 
 app.get("/", (req, res) => {
-  const cookieDev = req.cookies.detected_device; // cookie override
+  // 1) get UA + optional cookie override
   const ua = req.get("User-Agent") || "";
+  const cookieDev = req.cookies ? req.cookies.detected_device : undefined;
+  const USE_COOKIE_OVERRIDE = true; // set false if you always trust UA
 
-
-  //Cookie override (Matikan kalau misal server trust user agent bukan cookie pertama) kalau gunakan logic dibawah lebih strict
-  let device;
-  if (["mobile", "tablet", "desktop"].includes(cookieDev)) {
+  // 2) determine device (always set before using)
+  let device = detectDevice(ua);
+  if (USE_COOKIE_OVERRIDE && ["mobile","tablet","desktop"].includes(cookieDev)) {
     device = cookieDev;
-  } else {
-    device = detectDevice(ua);
   }
 
-  // per-device content
+  // 3) page content per device
   let pageInfo;
   if (device === "desktop") {
     pageInfo = {
@@ -64,7 +66,7 @@ app.get("/", (req, res) => {
       sub: "A clean studio portfolio layout tuned for tablets.",
       bullets: ["Gallery", "Services", "Contact form"]
     };
-  } else { // mobile
+  } else {
     pageInfo = {
       title: "AdaptiveSite — Chatan App",
       headline: "Chat with your people.",
@@ -73,39 +75,27 @@ app.get("/", (req, res) => {
     };
   }
 
-  // render template (EJS)
-  res.render("index", { device, ua, page: pageInfo });
-});
-
-
-//warna
-app.get("/", (req, res) => {
-  const ua = req.headers["user-agent"] || "";
-  const device = detectDevice(ua); // "mobile" | "tablet" | "desktop"
-
+  // 4) theme per-device (send full Tailwind utility fragments)
   let theme;
   if (device === "desktop") {
-    theme = { bg: "from-blue-50 to-blue-100", accent: "blue-600" };
+    theme = { bodyBg: "from-blue-50 to-blue-100", accentClass: "text-blue-600", accentDot: "bg-blue-600", avatarGradient: "from-blue-600 to-blue-300" };
   } else if (device === "tablet") {
-    theme = { bg: "from-pink-50 to-pink-100", accent: "pink-600" };
+    theme = { bodyBg: "from-pink-50 to-pink-100", accentClass: "text-pink-600", accentDot: "bg-pink-600", avatarGradient: "from-pink-600 to-pink-300" };
   } else {
-    theme = { bg: "from-emerald-50 to-emerald-100", accent: "emerald-100" };
+    theme = { bodyBg: "from-emerald-50 to-emerald-100", accentClass: "text-emerald-600", accentDot: "bg-emerald-600", avatarGradient: "from-emerald-600 to-emerald-300" };
   }
 
-  res.render("index", { device, ua, page: pageInfo, theme });
+  // 5) debug log (optional) - remove if noisy
+  console.log("[render] device=", device);
+
+  // 6) single render call
+  return res.render("index", { device, ua, page: pageInfo, theme });
 });
 
-
+// clear cookie: redirect to / so root handles render (safer)
 app.get("/clear-device-cookie", (req, res) => {
-  // clears cookie and renders a helpful page
   res.clearCookie("detected_device", { path: "/" });
-  const page = {
-    title: "AdaptiveSite — Demo",
-    headline: "Cleared device cookie",
-    sub: "Cookie removed; reload to let server detect UA again.",
-    bullets: []
-  };
-  res.render("index", { device: "desktop", ua: req.get("User-Agent") || "", page });
+  res.redirect("/");
 });
 
 const PORT = process.env.PORT || 5000;
