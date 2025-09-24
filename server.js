@@ -57,110 +57,39 @@
   }
 
   app.get("/", (req, res) => {
-    // CRITICAL: Initialize device variable immediately to prevent undefined errors
-    let device = "desktop"; // Default fallback - MUST be defined before any logic
+  let device = "desktop";
+  try {
+    const ua = req.get("User-Agent") || "";
+    device = detectDevice(ua);
 
-    try {
-      // 1) get UA + optional cookie override with proper validation
-      const ua = req.get("User-Agent") || "";
-      const cookieDev = req.cookies ? req.cookies.detected_device : undefined;
-      const USE_COOKIE_OVERRIDE = true; // set false if you always trust UA - enabled for dynamic updates
-
-      // 2) determine device with error handling and fallback
-      try {
-        const detectedDevice = detectDevice(ua);
-        // Validate device value
-        if (detectedDevice && ["mobile", "tablet", "desktop"].includes(detectedDevice)) {
-          device = detectedDevice;
-        } else {
-          device = "desktop"; // fallback to desktop if detection fails
-        }
-      } catch (error) {
-        console.error("[ERROR] Device detection failed:", error);
-        device = "desktop"; // fallback to desktop on error
-      }
-
-    // 3) apply cookie override if valid (always update cookie with current detection)
-    if (USE_COOKIE_OVERRIDE && cookieDev && ["mobile","tablet","desktop"].includes(cookieDev)) {
-      device = cookieDev;
+    // page content
+    let pageInfo;
+    if (device === "desktop") {
+      pageInfo = { title: "AdaptiveSite — Ecommerce", headline: "Sell anything. Fast.", sub: "A modern ecommerce demo layout for desktop shoppers.", bullets: ["Product grid", "Checkout flow", "Admin dashboard"] };
+    } else if (device === "tablet") {
+      pageInfo = { title: "AdaptiveSite — Studio", headline: "Create. Showcase. Inspire.", sub: "A clean studio portfolio layout tuned for tablets.", bullets: ["Gallery", "Services", "Contact form"] };
+    } else {
+      pageInfo = { title: "AdaptiveSite — Chatan App", headline: "Chat with your people.", sub: "Compact chat UI and quick actions, optimized for phones.", bullets: ["Recent chats", "Quick replies", "Notifications"] };
     }
 
-    // Always update cookie with current device detection for consistency
-    res.cookie("detected_device", device, {
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      httpOnly: false, // Allow client-side access for testing
-      path: "/"
+    // theme
+    let theme;
+    if (device === "desktop") theme = { bodyBg: "from-blue-50 to-blue-100", accentClass: "text-blue-600" };
+    else if (device === "tablet") theme = { bodyBg: "from-pink-50 to-pink-100", accentClass: "text-pink-600" };
+    else theme = { bodyBg: "from-emerald-50 to-emerald-100", accentClass: "text-emerald-600" };
+
+    res.render("index", { device, ua, page: pageInfo, theme });
+  } catch (err) {
+    console.error(err);
+    res.status(500).render("index", {
+      device: "desktop",
+      ua: "",
+      page: { title: "Error", headline: "Something went wrong", sub: "Try again later", bullets: [] },
+      theme: { bodyBg: "from-red-50 to-red-100", accentClass: "text-red-600" }
     });
+  }
+});
 
-      // 4) CRITICAL SAFETY CHECK - ensure device is always defined
-      if (!device || typeof device !== "string") {
-        device = "desktop";
-      }
-
-      // 5) page content per device
-      let pageInfo;
-      if (device === "desktop") {
-        pageInfo = {
-          title: "AdaptiveSite — Ecommerce",
-          headline: "Sell anything. Fast.",
-          sub: "A modern ecommerce demo layout for desktop shoppers.",
-          bullets: ["Product grid", "Checkout flow", "Admin dashboard"]
-        };
-      } else if (device === "tablet") {
-        pageInfo = {
-          title: "AdaptiveSite — Studio",
-          headline: "Create. Showcase. Inspire.",
-          sub: "A clean studio portfolio layout tuned for tablets.",
-          bullets: ["Gallery", "Services", "Contact form"]
-        };
-      } else {
-        pageInfo = {
-          title: "AdaptiveSite — Chatan App",
-          headline: "Chat with your people.",
-          sub: "Compact chat UI and quick actions, optimized for phones.",
-          bullets: ["Recent chats", "Quick replies", "Notifications"]
-        };
-      }
-
-      // 6) theme per-device (send full Tailwind utility fragments)
-      let theme;
-      if (device === "desktop") {
-        theme = { bodyBg: "from-blue-50 to-blue-100", accentClass: "text-blue-600", accentDot: "bg-blue-600", avatarGradient: "from-blue-600 to-blue-300" };
-      } else if (device === "tablet") {
-        theme = { bodyBg: "from-pink-50 to-pink-100", accentClass: "text-pink-600", accentDot: "bg-pink-600", avatarGradient: "from-pink-600 to-pink-300" };
-      } else {
-        theme = { bodyBg: "from-emerald-50 to-emerald-100", accentClass: "text-emerald-600", accentDot: "bg-emerald-600", avatarGradient: "from-emerald-600 to-emerald-300" };
-      }
-
-      // 7) debug log (optional) - remove if noisy
-      console.log("[render] device=", device, "ua=", ua.substring(0, 100));
-
-      // 8) CRITICAL: Ensure all template variables are defined before rendering
-      const templateData = {
-        device: device || "desktop", // Double-check device
-        ua: ua || "",
-        page: pageInfo,
-        theme: theme
-      };
-
-      // 9) single render call with guaranteed data
-      return res.render("index", templateData);
-    } catch (error) {
-      console.error("[ERROR] Route handler failed:", error);
-      // Fallback response in case of any error
-      return res.status(500).render("index", {
-        device: "desktop",
-        ua: "",
-        page: {
-          title: "AdaptiveSite — Error",
-          headline: "Something went wrong",
-          sub: "Please try again later",
-          bullets: ["Error occurred", "Using fallback", "Check logs"]
-        },
-        theme: { bodyBg: "from-red-50 to-red-100", accentClass: "text-red-600", accentDot: "bg-red-600", avatarGradient: "from-red-600 to-red-300" }
-      });
-    }
-  });
 
   // Health check endpoint for debugging
   app.get("/health", (req, res) => {
